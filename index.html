@@ -10,6 +10,10 @@
   gtag('js', new Date());
   gtag('config', 'G-6EX0XTRY09');
 </script>
+<script>
+  // Returning visitors skip the intro (it plays once per browser).
+  try { if (localStorage.getItem('vaulxIntroSeen')) document.documentElement.classList.add('intro-seen'); } catch(e){}
+</script>
 
 
 <!-- Page meta: charset, responsive viewport, title, description -->
@@ -429,6 +433,7 @@
         (e.g. "/img/logo.png").
      =================================================================== */
   html.intro-lock, html.intro-lock body{ overflow:hidden; height:100%; }
+  html.intro-seen .intro-overlay{ display:none; }
 
   .intro-overlay{
     position:fixed; inset:0; z-index:9999;
@@ -870,6 +875,13 @@
     var skipBtn = document.getElementById('introSkip');
     if(!overlay) return;
 
+    // Already seen on this browser: remove it and don't lock scrolling.
+    if (document.documentElement.classList.contains('intro-seen')) {
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      return;
+    }
+    try { localStorage.setItem('vaulxIntroSeen','1'); } catch(e){}
+
     var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var TOTAL_MS = reduced ? 900 : 2700;
 
@@ -926,5 +938,32 @@
   });
 </script>
 
+
+<script>
+// Analytics events: contact clicks and form submissions (mark these as key events in GA4).
+(function(){
+  function send(name, params){
+    if (typeof gtag !== 'function') return;
+    params = params || {};
+    params.transport_type = 'beacon';
+    gtag('event', name, params);
+  }
+  document.addEventListener('click', function(e){
+    var a = e.target.closest ? e.target.closest('a[href]') : null;
+    if (!a) return;
+    var h = a.getAttribute('href') || '';
+    if (h.indexOf('wa.me') > -1) send('click_whatsapp', {link_url:h});
+    else if (h.indexOf('tel:') === 0) send('click_phone');
+    else if (h.indexOf('mailto:') === 0) send('click_email');
+    else if (h === '#contact' && a.classList.contains('btn')) send('click_start_project', {link_text:(a.textContent||'').trim()});
+  });
+  document.addEventListener('submit', function(e){
+    var f = e.target;
+    if (!f || !f.action || f.action.indexOf('formsubmit.co') === -1) return;
+    if (f.querySelector('#newsletter-email')) send('newsletter_signup');
+    else send('generate_lead', {form_name:'contact'});
+  });
+})();
+</script>
 </body>
 </html>
